@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: amepro-device-api - Criação/Remoção e inicialização de dispositivos no amepro
+
+Parameters:
+  AliasName:
+    Type: String
+    Description: Environment name sufix - dev|hml|prod
+    Default: dev
+
+Resources:
+  MyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${AWS::StackName}"
+      StageName: !Sub "${AliasName}"
+      EndpointConfiguration: REGIONAL      
+
+  SumApiGatewayHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ApiGatewayHandler"
+      Description: "receives a post request with a json with two integer operands, then returns its sum."
+      Handler: api-gateway-handler.goex
+      CodeUri: sum/handlers/api-gateway-handler/main
+      MemorySize: 128
+      Runtime: go1.x
+      Timeout: 30
+      AutoPublishAlias: !Ref AliasName
+
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            Path: /sum
+            Method: post
+            RestApiId: !Ref MyApi
+
+  SumApiGatewayHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 60
+      LogGroupName: !Join ["", ["/aws/lambda/", !Ref SumApiGatewayHandler]]              
+
+  DirectInvokeHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-DirectInvokeHandler"
+      Description: "Receives a json with two integer operands, then returns its sum."
+      Handler: direct-invoke-handler.goex
+      CodeUri: sum/handlers/direct-invoke-handler/main
+      MemorySize: 128
+      Runtime: go1.x
+      Timeout: 30
+      AutoPublishAlias: !Ref AliasName
+
+  DirectInvokeHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 60
+      LogGroupName: !Join ["", ["/aws/lambda/", !Ref DirectInvokeHandler]]        
+         
+
+
